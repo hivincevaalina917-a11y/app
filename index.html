@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PRINCIP — клиенты и замеры</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1E2A3D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PRINCIP">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{
+    --cream:#F4EFE3; --ink:#1E2A3D; --ink-55:rgba(30,42,61,0.55);
+    --brass:#A9824C; --brass-dark:#8A6836; --line:rgba(30,42,61,0.16);
+    --free:#DDEEDD; --busy:#F7D6D6; --warn:#b23b3b;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%;}
+  .wrap{max-width:720px;margin:0 auto;padding:0 12px 90px;}
+  header{position:sticky;top:0;z-index:20;background:rgba(244,239,227,0.95);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:max(10px,env(safe-area-inset-top)) 12px 8px;margin:0 -12px 12px;border-bottom:1px solid var(--line);}
+  h1{font-size:18px;margin:0;}
+  #syncBar{display:flex;gap:8px;align-items:center;font-size:12px;margin-top:4px;}
+  #syncText{flex:1;font-weight:600;}
+  #syncBar button{padding:6px 10px;font-size:12px;}
+  #memWarn{display:none;background:var(--busy);color:var(--warn);font-size:12px;padding:8px 10px;border-radius:10px;margin-top:6px;}
+  .tabs{display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:2px;}
+  .tab{flex:0 0 auto;padding:8px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13px;cursor:pointer;white-space:nowrap;}
+  .tab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .tab .n{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--brass);color:#fff;font-size:11px;text-align:center;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(30,42,61,0.04),0 6px 16px -8px rgba(30,42,61,0.12);}
+  .card h2{font-size:14px;margin:0 0 10px;color:var(--brass-dark);}
+  input,select,textarea{width:100%;padding:10px 11px;border:1px solid rgba(30,42,61,0.3);border-radius:10px;font-size:16px;background:var(--cream);color:var(--ink);font-family:inherit;margin-bottom:8px;}
+  textarea{min-height:64px;}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .g2 > *{margin-bottom:8px;}
+  button{padding:10px 16px;background:var(--ink);color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit;}
+  button.secondary{background:#fff;color:var(--ink);border:1px solid var(--line);}
+  button.small{padding:7px 11px;font-size:12.5px;}
+  button.brass{background:var(--brass-dark);}
+  .msg{font-size:12px;color:var(--ink-55);margin:6px 0 0;min-height:16px;}
+  .msg.err{color:var(--warn);font-weight:600;}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px;}
+  .chip{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;cursor:pointer;}
+  .chip.on{background:var(--brass-dark);color:#fff;border-color:var(--brass-dark);}
+  .item{border-top:1px solid var(--line);padding:11px 0;}
+  .item:first-child{border-top:none;}
+  .item .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;}
+  .item .nm{font-weight:700;font-size:15px;}
+  .item .meta{font-size:12.5px;color:var(--ink-55);margin:2px 0;white-space:pre-wrap;}
+  .item .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center;}
+  .item select{margin:0;width:auto;max-width:100%;padding:7px 9px;font-size:14px;}
+  .pend{color:var(--warn);font-weight:600;font-size:12px;}
+  .late{color:var(--warn);font-weight:600;}
+  a{color:var(--brass-dark);}
+  .slot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 12px;border-radius:10px;margin-bottom:6px;font-size:14px;cursor:pointer;}
+  .slot.free{background:var(--free);} .slot.busy{background:var(--busy);}
+  .slot .time{font-weight:700;} .slot .who{font-size:12.5px;color:var(--ink-55);text-align:right;}
+  details.edit{margin-top:8px;} details.edit summary{font-size:13px;color:var(--brass-dark);cursor:pointer;}
+  details.edit .body{padding-top:8px;}
+  .photo-btn{display:inline-block;padding:10px 16px;background:#fff;border:1px dashed var(--brass);border-radius:10px;font-size:14px;cursor:pointer;color:var(--brass-dark);}
+  .photo-preview{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .thumb{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--line);}
+  .thumb img{width:100%;height:100%;object-fit:cover;}
+  .thumb button{position:absolute;top:2px;right:2px;width:22px;height:22px;padding:0;border-radius:50%;background:rgba(30,42,61,0.75);font-size:12px;line-height:22px;}
+  .modal{position:fixed;inset:0;background:rgba(30,42,61,0.55);z-index:50;display:none;align-items:flex-end;justify-content:center;}
+  .modal.open{display:flex;}
+  .modal .sheet{background:var(--cream);width:100%;max-width:720px;max-height:85vh;overflow:auto;border-radius:18px 18px 0 0;padding:14px 14px 28px;}
+  .pickrow{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line);}
+  .pickrow input{width:22px;height:22px;margin:2px 0 0;flex:0 0 auto;}
+  ol.how{font-size:13px;line-height:1.5;padding-left:18px;margin:6px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ПРИНЦИП — клиенты и замеры</h1>
+    <div id="syncBar"><span id="syncText">…</span><button class="secondary" id="btnSyncNow">Отправить сейчас</button></div>
+    <div id="memWarn">⚠️ Память телефона для приложения недоступна: данные хранятся только пока открыта страница. Не закрывайте её, пока не появится «Всё отправлено».</div>
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-tab="leads">Обращения<span class="n" id="nLeads" style="display:none"></span></div>
+      <div class="tab" data-tab="clients">Клиенты</div>
+      <div class="tab" data-tab="booking">Запись</div>
+      <div class="tab" data-tab="measure">Замеры</div>
+      <div class="tab" data-tab="settings">Настройка</div>
+    </div>
+  </header>
+
+  <!-- ===== ОБРАЩЕНИЯ ===== -->
+  <div id="tab-leads">
+    <div class="card">
+      <h2>Новое обращение</h2>
+      <div class="g2"><input id="lName" placeholder="Имя"><input id="lPhone" type="tel" placeholder="Телефон"></div>
+      <div class="g2"><select id="lSource"></select><select id="lRequest"></select></div>
+      <input id="lNext" type="date" title="Когда связаться снова">
+      <textarea id="lComment" placeholder="Что хотят, бюджет, договорённости…"></textarea>
+      <button id="btnAddLead">+ Добавить обращение</button>
+      <p class="msg" id="leadMsg"></p>
+    </div>
+    <div class="card">
+      <h2>Все обращения</h2>
+      <input id="leadSearch" placeholder="Поиск по имени или телефону">
+      <div class="chips" id="leadFilters"></div>
+      <div id="leadList"></div>
+    </div>
+  </div>
+
+  <!-- ===== КЛИЕНТЫ ===== -->
+  <div id="tab-clients" style="display:none;">
+    <div class="card">
+      <h2>Текущие клиенты</h2>
+      <div class="acts" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <button id="btnPick" class="brass">+ Выбрать из обращений</button>
+        <button id="btnNewClient" class="secondary">+ Новый клиент</button>
+      </div>
+      <input id="clientSearch" placeholder="Поиск по имени, телефону, адресу">
+      <div class="chips" id="clientFilters"></div>
+      <div id="clientList"></div>
+    </div>
+  </div>
+
+  <!-- ===== ЗАПИСЬ ===== -->
+  <div id="tab-booking" style="display:none;">
+    <div class="card">
+      <h2>Запись на замер / в офис</h2>
+      <input id="dateInput" type="date">
+      <div id="slotsList"></div>
+      <p class="msg" id="dayMsg"></p>
+    </div>
+  </div>
+
+  <!-- ===== ЗАМЕРЫ ===== -->
+  <div id="tab-measure" style="display:none;">
+    <div class="card">
+      <h2>Новый замер</h2>
+      <select id="mClient"></select>
+      <div class="g2"><input id="mName" placeholder="Имя клиента"><input id="mPhone" type="tel" placeholder="Телефон"></div>
+      <input id="mAddress" placeholder="Адрес">
+      <input id="mDate" type="date">
+      <textarea id="mSizes" placeholder="Размеры помещения: кухня 3.2x2.4, потолок 2.65, окно 1.2x1.4 от пола 0.9…"></textarea>
+      <label class="photo-btn">📷 Добавить фото
+        <input type="file" id="mPhotoInput" accept="image/*" multiple style="display:none;">
+      </label>
+      <div id="mPhotoPreview" class="photo-preview"></div>
+      <div style="margin-top:10px;"><button id="btnAddMeasure">Сохранить замер</button></div>
+      <p class="msg" id="measureMsg"></p>
+      <div id="shareBox"></div>
+    </div>
+    <div class="card"><h2>Сохранённые замеры</h2><div id="measureList"></div></div>
+  </div>
+
+  <!-- ===== НАСТРОЙКА ===== -->
+  <div id="tab-settings" style="display:none;">
+    <div class="card">
+      <h2>Хранилище (Google Таблица)</h2>
+      <input id="urlInput" placeholder="Ссылка Apps Script (…/exec)">
+      <input id="keyInput" type="password" placeholder="Ключ доступа (тот же, что в скрипте)" autocomplete="off">
+      <div class="acts" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="btnSaveUrl">Сохранить ссылку</button>
+        <button id="btnPing" class="secondary">Проверить связь</button>
+      </div>
+      <p class="msg" id="settingsMsg"></p>
+    </div>
+    <div class="card">
+      <h2>Надёжность</h2>
+      <div id="reliab" class="meta" style="font-size:13px;line-height:1.6;"></div>
+      <div class="acts" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <button id="btnBackup" class="secondary">Сохранить копию данных в файл</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Как поставить на телефон</h2>
+      <ol class="how">
+        <li><b>iPhone:</b> откройте ссылку в Safari → кнопка «Поделиться» → «На экран Домой». Обязательно: иначе Safari может стереть данные.</li>
+        <li><b>Android:</b> Chrome → меню ⋮ → «Установить приложение».</li>
+        <li>Первый раз откройте при интернете — дальше открывается и без него.</li>
+        <li>Перед тем как закрыть приложение, смотрите вверху: «✓ Всё отправлено».</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- выбор из обращений -->
+<div class="modal" id="pickModal">
+  <div class="sheet">
+    <h2 style="margin:0 0 8px;font-size:15px;">Выберите, кого перенести в клиенты</h2>
+    <input id="pickSearch" placeholder="Поиск">
+    <div id="pickList"></div>
+    <div class="acts" style="display:flex;gap:8px;margin-top:12px;">
+      <button id="btnPickGo" class="brass">Перенести выбранных</button>
+      <button id="btnPickClose" class="secondary">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= СПРАВОЧНИКИ ================= */
+const SOURCES = ['ВК','MAX','Звонок','Яндекс Карты','Авито','Сарафан','Инстаграм','Пришёл сам','Другое'];
+const REQUESTS = ['Кухня','Шкаф','Прихожая','Детская','Гардеробная','Ванная','Другое'];
+const LEAD_STATUSES = ['Новое','Записан','Был в офисе','Ушёл думать','Отказ','Стал клиентом'];
+const STAGES = ['Замер','Проект','Договор подписан','В производстве','Доставка','Установка','Закрыт'];
+const SLOT_HOURS = [9,10,11,12,13,14,15,16,17,18];
+const STORE = { lead:'leads', client:'clients', booking:'bookings', measure:'measures' };
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function todayStr(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+/* ================= ХРАНИЛИЩЕ НА ТЕЛЕФОНЕ (IndexedDB) =================
+   Если IndexedDB недоступна — работаем в памяти страницы и громко предупреждаем. */
+let _db = null, memMode = false; const memStores = {};
+function openDb(){
+  if(_db) return _db;
+  _db = new Promise((resolve, reject)=>{
+    if(typeof indexedDB === 'undefined'){ reject(new Error('no idb')); return; }
+    const r = indexedDB.open('princip', 1);
+    r.onupgradeneeded = ()=>{ const d = r.result; ['queue','leads','clients','bookings','measures'].forEach(n=>{ if(!d.objectStoreNames.contains(n)) d.createObjectStore(n, {keyPath:'id'}); }); };
+    r.onsuccess = ()=> resolve(r.result);
+    r.onerror = ()=> reject(r.error);
+  }).catch(()=>{ memMode = true; $('memWarn').style.display = 'block'; return null; });
+  return _db;
+}
+async function dbAll(s){ const d = await openDb(); if(!d) return Object.values(memStores[s] || {});
+  return new Promise((res, rej)=>{ const q = d.transaction(s,'readonly').objectStore(s).getAll(); q.onsuccess = ()=>res(q.result); q.onerror = ()=>rej(q.error); }); }
+async function dbGet(s, id){ const d = await openDb(); if(!d) return (memStores[s] || {})[id];
+  return new Promise((res, rej)=>{ const q = d.transaction(s,'readonly').objectStore(s).get(id); q.onsuccess = ()=>res(q.result); q.onerror = ()=>rej(q.error); }); }
+async function dbPut(s, v){ const d = await openDb(); if(!d){ (memStores[s] = memStores[s] || {})[v.id] = v; return; }
+  return new Promise((res, rej)=>{ const tx = d.transaction(s,'readwrite'); tx.objectStore(s).put(v); tx.oncomplete = ()=>res(); tx.onerror = ()=>rej(tx.error); tx.onabort = ()=>rej(tx.error || new Error('abort')); }); }
+async function dbDel(s, id){ const d = await openDb(); if(!d){ if(memStores[s]) delete memStores[s][id]; return; }
+  return new Promise((res, rej)=>{ const tx = d.transaction(s,'readwrite'); tx.objectStore(s).delete(id); tx.oncomplete = ()=>res(); tx.onerror = ()=>rej(tx.error); }); }
+
+function getUrl(){ try{ return localStorage.getItem('princip_url') || ''; }catch(e){ return window.__url || ''; } }
+function setUrl(u){ try{ localStorage.setItem('princip_url', u); }catch(e){ window.__url = u; } }
+function getKey(){ try{ return localStorage.getItem('princip_key') || ''; }catch(e){ return window.__key || ''; } }
+function setKey(k){ try{ localStorage.setItem('princip_key', k); }catch(e){ window.__key = k; } }
+
+/* ================= СВЯЗЬ С СЕРВЕРОМ ================= */
+async function fetchT(url, opts, ms){
+  const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms);
+  try{ return await fetch(url, Object.assign({signal:c.signal}, opts || {})); } finally{ clearTimeout(t); }
+}
+
+/* ОЧЕРЕДЬ: запись удаляется только после ответа сервера «ok».
+   Нет связи — остаётся в очереди и уходит сама. */
+async function enqueue(payload){ await dbPut('queue', {id:uid(), ts:Date.now(), attempts:0, payload}); updateSyncBar(); }
+let flushing = false;
+async function flushQueue(){
+  const url = getUrl(); if(flushing || !url) return;
+  flushing = true; let sent = false;
+  try{
+    const q = (await dbAll('queue')).sort((a,b)=>a.ts - b.ts);
+    for(const item of q){
+      try{
+        const heavy = item.payload.record && item.payload.record.photos && item.payload.record.photos.length;
+        const res = await fetchT(url, {method:'POST', body:JSON.stringify(Object.assign({key:getKey()}, item.payload))}, heavy ? 90000 : 25000);
+        const data = await res.json();
+        if(!data.ok){ item.attempts = (item.attempts || 0) + 1; item.lastError = String(data.error || 'ошибка сервера'); await dbPut('queue', item); continue; }
+      }catch(e){ break; }              // нет связи: остальное ждёт, порядок сохраняется
+      await dbDel('queue', item.id); sent = true;
+      await markSynced(item.payload);
+    }
+  } finally { flushing = false; updateSyncBar(); }
+  if(sent) await refreshAll();
+}
+async function markSynced(p){
+  if(p.action !== 'upsert') return;
+  const left = (await dbAll('queue')).filter(i => i.payload.entity === p.entity && i.payload.record && i.payload.record.id === p.record.id);
+  if(left.length) return;
+  const r = await dbGet(STORE[p.entity], p.record.id);
+  if(r){ r._pending = false; await dbPut(STORE[p.entity], r); }
+}
+async function updateSyncBar(){
+  const q = await dbAll('queue'); const n = q.length; const bad = q.filter(i => i.lastError).length;
+  const off = (typeof navigator !== 'undefined' && navigator.onLine === false) ? ' · нет интернета' : '';
+  let t, color;
+  if(!getUrl()){ t = '⚠️ Не подключено хранилище (вкладка «Настройка»)'; color = 'var(--warn)'; }
+  else if(n > 0){ t = '⏳ Не отправлено: ' + n + off + (bad ? ' · есть ошибки (Настройка)' : ''); color = 'var(--warn)'; }
+  else { t = '✓ Всё отправлено' + off; color = 'var(--ink)'; }
+  $('syncText').textContent = t; $('syncText').style.color = color;
+}
+
+/* Сохранение: сначала в очередь, потом на телефон; форма очищается только при успехе. */
+async function saveRecord(entity, fields, photos){
+  const opRecord = Object.assign({}, fields);
+  if(photos && photos.length) opRecord.photos = photos;
+  await enqueue({action:'upsert', entity, record:opRecord});
+  const existing = await dbGet(STORE[entity], fields.id) || {};
+  const merged = Object.assign({}, existing, fields, {_pending:true});
+  await dbPut(STORE[entity], merged);
+  flushQueue();
+  return merged;
+}
+async function deleteRecord(entity, id){
+  await enqueue({action:'delete', entity, id});
+  await dbDel(STORE[entity], id);
+  flushQueue();
+}
+
+/* Подтягиваем с сервера: чужие правки видны, свои неотправленные — не затираем. */
+async function refreshEntity(entity){
+  const url = getUrl(); if(!url) return false;
+  let data;
+  try{ const res = await fetchT(url + '?action=list&entity=' + entity + '&key=' + encodeURIComponent(getKey()), {}, 25000); data = await res.json(); }catch(e){ return false; }
+  if(!data || !data.ok) return false;
+  const store = STORE[entity];
+  const local = await dbAll(store);
+  const queue = await dbAll('queue');
+  const pendingIds = new Set(local.filter(r => r._pending).map(r => r.id));
+  const deleting = new Set(queue.filter(i => i.payload.action === 'delete' && i.payload.entity === entity).map(i => i.payload.id));
+  const serverIds = new Set();
+  for(const r of data.records){
+    serverIds.add(r.id);
+    if(pendingIds.has(r.id) || deleting.has(r.id)) continue;
+    await dbPut(store, Object.assign({}, r, {_pending:false}));
+  }
+  for(const r of local){ if(!r._pending && !serverIds.has(r.id)) await dbDel(store, r.id); }
+  return true;
+}
+async function refreshAll(){
+  for(const e of ['lead','client','booking','measure']){ try{ await refreshEntity(e); }catch(err){} }
+  await renderAll();
+}
+
+/* ================= ВКЛАДКИ ================= */
+const state = { leadFilter:'active', clientFilter:'active', tab:'leads' };
+function switchTab(name){
+  state.tab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  ['leads','clients','booking','measure','settings'].forEach(id => { $('tab-' + id).style.display = (id === name) ? 'block' : 'none'; });
+  if(name === 'settings') renderSettings();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', ()=>switchTab(t.dataset.tab)));
+
+function fillSelect(el, items, withEmpty){ el.innerHTML = (withEmpty ? '<option value="">' + withEmpty + '</option>' : '') + items.map(i => '<option>' + esc(i) + '</option>').join(''); }
+function isEditing(container){ const a = document.activeElement; return !!(a && container.contains(a) && ['INPUT','TEXTAREA','SELECT'].includes(a.tagName)); }
+function openDetails(container){ return !!container.querySelector('details[open]'); }
+
+/* ================= ОБРАЩЕНИЯ ================= */
+function chipsHtml(items, current){ return items.map(([k, label]) => '<span class="chip' + (k === current ? ' on' : '') + '" data-k="' + esc(k) + '">' + esc(label) + '</span>').join(''); }
+const LEAD_FILTERS = [['active','Активные'],['all','Все'],['Стал клиентом','Стали клиентами'],['Отказ','Отказ']];
+function leadVisible(l, f, q){
+  const isActive = l.status !== 'Стал клиентом' && l.status !== 'Отказ';
+  if(f === 'active' && !isActive) return false;
+  if(f !== 'active' && f !== 'all' && l.status !== f) return false;
+  if(q){ const hay = ((l.name || '') + ' ' + (l.phone || '')).toLowerCase(); if(!hay.includes(q)) return false; }
+  return true;
+}
+async function renderLeads(force){
+  const box = $('leadList');
+  if(!force && (isEditing(box) || isEditing($('tab-leads')))) { state.dirtyLeads = true; return; }
+  const leads = (await dbAll('leads')).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  $('leadFilters').innerHTML = chipsHtml(LEAD_FILTERS, state.leadFilter);
+  const q = $('leadSearch').value.trim().toLowerCase();
+  const list = leads.filter(l => leadVisible(l, state.leadFilter, q));
+  const today = todayStr();
+  const newCount = leads.filter(l => l.status === 'Новое').length;
+  $('nLeads').style.display = newCount ? 'inline-block' : 'none'; $('nLeads').textContent = newCount;
+  box.innerHTML = list.length ? list.map(l => {
+    const active = l.status !== 'Стал клиентом' && l.status !== 'Отказ';
+    const late = active && l.nextContact && l.nextContact <= today;
+    return '<div class="item" data-id="' + esc(l.id) + '">' +
+      '<div class="top"><span class="nm">' + esc(l.name || 'Без имени') + '</span>' + (l.phone ? '<a href="tel:' + esc(l.phone) + '">' + esc(l.phone) + '</a>' : '') + '</div>' +
+      '<div class="meta">' + esc([l.source, l.request, (l.createdAt || '').slice(0, 10)].filter(Boolean).join(' · ')) + (l._pending ? ' <span class="pend">⏳ не отправлено</span>' : '') + '</div>' +
+      (l.comment ? '<div class="meta">' + esc(l.comment) + '</div>' : '') +
+      (l.nextContact ? '<div class="meta' + (late ? ' late' : '') + '">' + (late ? '⚠ Связаться: ' : 'Связаться: ') + esc(l.nextContact) + '</div>' : '') +
+      '<div class="acts"><select data-act="status">' + LEAD_STATUSES.map(s => '<option' + (s === l.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>' +
+      (!l.clientId && l.status !== 'Стал клиентом' ? '<button class="small brass" data-act="toclient">→ В клиенты</button>' : '') + '</div></div>';
+  }).join('') : '<p class="msg">Ничего нет.</p>';
+}
+$('leadFilters').addEventListener('click', e => { const c = e.target.closest('.chip'); if(!c) return; state.leadFilter = c.dataset.k; renderLeads(true); });
+$('leadSearch').addEventListener('input', ()=>renderLeads(true));
+$('leadList').addEventListener('change', async e => {
+  if(e.target.dataset.act !== 'status') return;
+  const id = e.target.closest('.item').dataset.id;
+  await saveRecord('lead', {id, status:e.target.value});
+  state.dirtyLeads = false; renderLeads(true);
+});
+$('leadList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act="toclient"]'); if(!b) return;
+  b.disabled = true;
+  try{ await convertLead(b.closest('.item').dataset.id); switchTab('clients'); }catch(err){ alert('Не удалось сохранить на телефоне: ' + err.message); b.disabled = false; }
+});
+$('btnAddLead').addEventListener('click', async ()=>{
+  const name = $('lName').value.trim(), phone = $('lPhone').value.trim(), msg = $('leadMsg');
+  if(!name && !phone){ msg.className = 'msg err'; msg.textContent = 'Впишите хотя бы имя или телефон.'; return; }
+  try{
+    await saveRecord('lead', {id:uid(), createdAt:new Date().toISOString(), name, phone, source:$('lSource').value, request:$('lRequest').value,
+      comment:$('lComment').value.trim(), status:'Новое', nextContact:$('lNext').value, clientId:''});
+  }catch(err){ msg.className = 'msg err'; msg.textContent = '⚠️ НЕ сохранено — нет места на телефоне? ' + err.message; return; }
+  ['lName','lPhone','lComment','lNext'].forEach(i => $(i).value = '');
+  msg.className = 'msg'; msg.textContent = 'Добавлено.'; state.dirtyLeads = false; renderLeads(true);
+});
+
+/* Обращение → клиент. Номер клиента выводится из номера обращения, поэтому
+   повторное нажатие не создаст второго клиента. */
+async function convertLead(leadId){
+  const lead = await dbGet('leads', leadId); if(!lead) return;
+  const clientId = 'c_' + lead.id;
+  await saveRecord('client', {id:clientId, createdAt:new Date().toISOString(), name:lead.name || '', phone:lead.phone || '', address:'',
+    orderType:lead.request || '', contractNo:'', contractSum:'', stage:STAGES[0], comment:lead.comment || '', leadId:lead.id});
+  await saveRecord('lead', {id:lead.id, status:'Стал клиентом', clientId});
+  await renderAll();
+}
+
+/* ================= КЛИЕНТЫ ================= */
+const CLIENT_FILTERS = [['active','В работе'],['all','Все'],['Закрыт','Закрыты']];
+async function renderClients(force){
+  const box = $('clientList');
+  if(!force && (isEditing($('tab-clients')) || openDetails(box))){ state.dirtyClients = true; return; }
+  const clients = (await dbAll('clients')).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const measures = await dbAll('measures');
+  $('clientFilters').innerHTML = chipsHtml(CLIENT_FILTERS, state.clientFilter);
+  const q = $('clientSearch').value.trim().toLowerCase(), f = state.clientFilter;
+  const list = clients.filter(c => {
+    if(f === 'active' && c.stage === 'Закрыт') return false;
+    if(f === 'Закрыт' && c.stage !== 'Закрыт') return false;
+    if(q && !((c.name || '') + ' ' + (c.phone || '') + ' ' + (c.address || '')).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  box.innerHTML = list.length ? list.map(c => {
+    const nm = measures.filter(m => m.clientId === c.id).length;
+    return '<div class="item" data-id="' + esc(c.id) + '">' +
+      '<div class="top"><span class="nm">' + esc(c.name || 'Без имени') + '</span>' + (c.phone ? '<a href="tel:' + esc(c.phone) + '">' + esc(c.phone) + '</a>' : '') + '</div>' +
+      '<div class="meta">' + esc([c.orderType, c.address, c.contractNo ? 'договор ' + c.contractNo : '', c.contractSum ? c.contractSum + ' ₽' : ''].filter(Boolean).join(' · ')) + (c._pending ? ' <span class="pend">⏳ не отправлено</span>' : '') + '</div>' +
+      (c.comment ? '<div class="meta">' + esc(c.comment) + '</div>' : '') +
+      '<div class="acts"><select data-act="stage">' + STAGES.map(s => '<option' + (s === c.stage ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>' +
+      '<button class="small secondary" data-act="measure">📐 Замер' + (nm ? ' (' + nm + ')' : '') + '</button></div>' +
+      '<details class="edit"><summary>Изменить данные</summary><div class="body">' +
+      '<input data-f="name" placeholder="Имя" value="' + esc(c.name) + '">' +
+      '<input data-f="phone" type="tel" placeholder="Телефон" value="' + esc(c.phone) + '">' +
+      '<input data-f="address" placeholder="Адрес" value="' + esc(c.address) + '">' +
+      '<div class="g2"><input data-f="contractNo" placeholder="№ договора" value="' + esc(c.contractNo) + '"><input data-f="contractSum" type="number" inputmode="numeric" placeholder="Сумма, ₽" value="' + esc(c.contractSum) + '"></div>' +
+      '<textarea data-f="comment" placeholder="Комментарий">' + esc(c.comment) + '</textarea>' +
+      '<button class="small" data-act="saveclient">Сохранить</button></div></details></div>';
+  }).join('') : '<p class="msg">Клиентов пока нет. Нажмите «Выбрать из обращений».</p>';
+}
+$('clientFilters').addEventListener('click', e => { const c = e.target.closest('.chip'); if(!c) return; state.clientFilter = c.dataset.k; renderClients(true); });
+$('clientSearch').addEventListener('input', ()=>renderClients(true));
+$('clientList').addEventListener('change', async e => {
+  if(e.target.dataset.act !== 'stage') return;
+  await saveRecord('client', {id:e.target.closest('.item').dataset.id, stage:e.target.value});
+  renderClients(true);
+});
+$('clientList').addEventListener('click', async e => {
+  const item = e.target.closest('.item'); if(!item) return;
+  const act = e.target.dataset.act;
+  if(act === 'measure'){ const c = await dbGet('clients', item.dataset.id); switchTab('measure'); $('mClient').value = c.id; prefillFromClient(c); }
+  if(act === 'saveclient'){
+    const fields = {id:item.dataset.id};
+    item.querySelectorAll('[data-f]').forEach(i => fields[i.dataset.f] = i.value.trim());
+    try{ await saveRecord('client', fields); }catch(err){ alert('Не сохранено: ' + err.message); return; }
+    state.dirtyClients = false; renderClients(true);
+  }
+});
+$('btnNewClient').addEventListener('click', async ()=>{
+  const name = prompt('Имя клиента:'); if(!name) return;
+  const phone = prompt('Телефон:') || '';
+  try{ await saveRecord('client', {id:uid(), createdAt:new Date().toISOString(), name, phone, address:'', orderType:'', contractNo:'', contractSum:'', stage:STAGES[0], comment:'', leadId:''}); }
+  catch(err){ alert('Не сохранено: ' + err.message); return; }
+  renderClients(true);
+});
+
+/* ---- выбор из обращений ---- */
+async function renderPick(){
+  const q = $('pickSearch').value.trim().toLowerCase();
+  const leads = (await dbAll('leads')).filter(l => !l.clientId && l.status !== 'Стал клиентом' && l.status !== 'Отказ')
+    .filter(l => !q || ((l.name || '') + ' ' + (l.phone || '')).toLowerCase().includes(q))
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const checked = new Set([...$('pickList').querySelectorAll('input:checked')].map(i => i.value));
+  $('pickList').innerHTML = leads.length ? leads.map(l =>
+    '<label class="pickrow"><input type="checkbox" value="' + esc(l.id) + '"' + (checked.has(l.id) ? ' checked' : '') + '><span><b>' + esc(l.name || 'Без имени') + '</b> ' + esc(l.phone || '') +
+    '<br><span class="meta">' + esc([l.source, l.request, l.status].filter(Boolean).join(' · ')) + '</span></span></label>').join('') : '<p class="msg">Нет обращений, которых ещё не перенесли.</p>';
+}
+$('btnPick').addEventListener('click', async ()=>{ $('pickSearch').value = ''; $('pickList').innerHTML = ''; await renderPick(); $('pickModal').classList.add('open'); });
+$('pickSearch').addEventListener('input', renderPick);
+$('btnPickClose').addEventListener('click', ()=>$('pickModal').classList.remove('open'));
+$('btnPickGo').addEventListener('click', async ()=>{
+  const ids = [...$('pickList').querySelectorAll('input:checked')].map(i => i.value);
+  if(!ids.length){ alert('Отметьте галочками, кого перенести.'); return; }
+  try{ for(const id of ids) await convertLead(id); }catch(err){ alert('Не всё сохранилось: ' + err.message); }
+  $('pickModal').classList.remove('open'); renderAll();
+});
+
+/* ================= ЗАПИСЬ ================= */
+async function renderDay(){
+  const date = $('dateInput').value;
+  const all = (await dbAll('bookings')).filter(b => b.date === date);
+  $('slotsList').innerHTML = SLOT_HOURS.map(h => {
+    const time = String(h).padStart(2, '0') + ':00';
+    const here = all.filter(b => b.time === time);
+    const who = here.length ? here.map(b => esc(b.name) + (b.phone ? ' · ' + esc(b.phone) : '') + (b._pending ? ' ⏳' : '')).join('<br>') + (here.length > 1 ? '<br><b class="late">⚠ двое на одно время</b>' : '') : 'свободно';
+    return '<div class="slot ' + (here.length ? 'busy' : 'free') + '" data-time="' + time + '"><span class="time">' + time + '</span><span class="who">' + who + '</span></div>';
+  }).join('');
+}
+$('dateInput').addEventListener('change', renderDay);
+$('slotsList').addEventListener('click', async e => {
+  const s = e.target.closest('.slot'); if(!s) return;
+  const date = $('dateInput').value, time = s.dataset.time;
+  const here = (await dbAll('bookings')).filter(b => b.date === date && b.time === time);
+  if(here.length){
+    for(const b of here){ if(confirm('Отменить запись: ' + b.name + ' на ' + time + '?')) await deleteRecord('booking', b.id); }
+  } else {
+    const name = prompt('Имя клиента на ' + time + ':'); if(!name) return;
+    const phone = prompt('Телефон:') || '';
+    try{ await saveRecord('booking', {id:uid(), date, time, name, phone}); }catch(err){ alert('Не сохранено: ' + err.message); return; }
+  }
+  renderDay();
+});
+
+/* ================= ЗАМЕРЫ ================= */
+let pendingPhotos = [], lastShare = '';
+function compressImage(file, maxSide = 1600, quality = 0.75){
+  return new Promise((resolve, reject)=>{
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      let w = img.naturalWidth, h = img.naturalHeight; const k = Math.min(1, maxSide / Math.max(w, h));
+      w = Math.round(w * k); h = Math.round(h * k);
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h); URL.revokeObjectURL(url);
+      resolve(cv.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('не удалось прочитать фото')); };
+    img.src = url;
+  });
+}
+function renderPhotoPreview(){
+  const box = $('mPhotoPreview'); box.innerHTML = '';
+  pendingPhotos.forEach((p, i) => {
+    const t = document.createElement('div'); t.className = 'thumb';
+    t.innerHTML = '<img src="' + p.preview + '"><button type="button">×</button>';
+    t.querySelector('button').addEventListener('click', ()=>{ pendingPhotos.splice(i, 1); renderPhotoPreview(); });
+    box.appendChild(t);
+  });
+}
+$('mPhotoInput').addEventListener('change', async e => {
+  const files = [...e.target.files]; if(!files.length) return;
+  $('measureMsg').className = 'msg'; $('measureMsg').textContent = 'Обрабатываю фото (' + files.length + ')…';
+  for(const f of files){
+    try{ const d = await compressImage(f); pendingPhotos.push({name:'фото_' + (pendingPhotos.length + 1) + '.jpg', data:d.split(',')[1], preview:d}); }catch(err){}
+  }
+  e.target.value = ''; $('measureMsg').textContent = ''; renderPhotoPreview();
+});
+async function fillClientSelect(){
+  const clients = (await dbAll('clients')).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const cur = $('mClient').value;
+  $('mClient').innerHTML = '<option value="">— клиент не выбран —</option>' + clients.map(c => '<option value="' + esc(c.id) + '">' + esc((c.name || 'Без имени') + (c.phone ? ' · ' + c.phone : '')) + '</option>').join('');
+  $('mClient').value = cur;
+}
+function prefillFromClient(c){ if(!c) return; if(!$('mName').value) $('mName').value = c.name || ''; if(!$('mPhone').value) $('mPhone').value = c.phone || ''; if(!$('mAddress').value) $('mAddress').value = c.address || ''; }
+$('mClient').addEventListener('change', async ()=>{ if($('mClient').value) prefillFromClient(await dbGet('clients', $('mClient').value)); });
+
+function measureText(m){
+  return ['📐 Замер ' + (m.date || ''), m.name + (m.phone ? ', ' + m.phone : ''), m.address, m.sizes,
+    m.photosUrl ? 'Фото: ' + m.photosUrl : (m.photoCount ? 'Фото: ' + m.photoCount + ' шт (загружаются)' : '')].filter(Boolean).join('\n');
+}
+async function shareText(text){
+  if(navigator.share){ try{ await navigator.share({title:'Замер PRINCIP', text}); return; }catch(e){ if(e && e.name === 'AbortError') return; } }
+  try{ await navigator.clipboard.writeText(text); alert('Скопировано. Вставьте в чат команды.'); }catch(e){ prompt('Скопируйте текст:', text); }
+}
+$('btnAddMeasure').addEventListener('click', async ()=>{
+  const msg = $('measureMsg'), name = $('mName').value.trim();
+  if(!name){ msg.className = 'msg err'; msg.textContent = 'Укажите имя клиента.'; return; }
+  if(pendingPhotos.length > 25){ msg.className = 'msg err'; msg.textContent = 'Слишком много фото за раз (максимум 25) — разделите на два замера.'; return; }
+  const photos = pendingPhotos.map(p => ({name:p.name, data:p.data}));
+  const rec = {id:uid(), date:$('mDate').value || todayStr(), clientId:$('mClient').value, name, phone:$('mPhone').value.trim(), address:$('mAddress').value.trim(), sizes:$('mSizes').value.trim(), photoCount:photos.length};
+  try{ await saveRecord('measure', rec, photos); }
+  catch(err){ msg.className = 'msg err'; msg.textContent = '⚠️ НЕ сохранено: на телефоне не хватило места (' + err.message + '). Уберите часть фото и повторите — данные остались в форме.'; return; }
+  lastShare = measureText(rec);
+  ['mName','mPhone','mAddress','mSizes'].forEach(i => $(i).value = ''); $('mClient').value = ''; pendingPhotos = []; renderPhotoPreview();
+  msg.className = 'msg'; msg.textContent = 'Сохранено на телефоне' + (photos.length ? ' вместе с ' + photos.length + ' фото' : '') + '. Уйдёт на сервер само.';
+  $('shareBox').innerHTML = '<button class="secondary small" id="btnShareLast">📤 Отправить копию в чат команды</button>';
+  $('btnShareLast').addEventListener('click', ()=>shareText(lastShare));
+  renderMeasures(true);
+});
+async function renderMeasures(force){
+  const box = $('measureList');
+  const list = (await dbAll('measures')).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  box.innerHTML = list.length ? list.map(m =>
+    '<div class="item" data-id="' + esc(m.id) + '"><div class="top"><span class="nm">' + esc(m.name) + '</span><span class="meta">' + esc(m.date) + '</span></div>' +
+    '<div class="meta">' + esc([m.phone, m.address].filter(Boolean).join(' · ')) + (m._pending ? ' <span class="pend">⏳ не отправлено</span>' : '') + '</div>' +
+    (m.sizes ? '<div class="meta">' + esc(m.sizes) + '</div>' : '') +
+    '<div class="acts">' + (m.photosUrl ? '<a href="' + esc(m.photosUrl) + '" target="_blank">📁 Фото (' + esc(m.photoCount) + ')</a>' : (m.photoCount && m._pending ? '<span class="meta">📷 ' + esc(m.photoCount) + ' фото — загрузятся вместе с замером</span>' : '')) +
+    '<button class="small secondary" data-act="share">📤</button></div></div>').join('') : '<p class="msg">Замеров пока нет.</p>';
+}
+$('measureList').addEventListener('click', async e => {
+  if(e.target.dataset.act !== 'share') return;
+  const m = await dbGet('measures', e.target.closest('.item').dataset.id); shareText(measureText(m));
+});
+
+/* ================= НАСТРОЙКА И НАДЁЖНОСТЬ ================= */
+async function renderSettings(){
+  $('urlInput').value = getUrl(); $('keyInput').value = getKey();
+  const q = await dbAll('queue');
+  let persisted = '—';
+  try{ if(navigator.storage && navigator.storage.persisted) persisted = (await navigator.storage.persisted()) ? 'да (браузер не сотрёт данные сам)' : 'нет — добавьте приложение на экран «Домой»'; }catch(e){}
+  $('reliab').innerHTML = 'Хранилище на телефоне: ' + (memMode ? '<b class="late">недоступно (работа только в памяти страницы)</b>' : 'IndexedDB, работает') + '<br>' +
+    'Постоянное хранение: ' + persisted + '<br>Не отправлено записей: <b>' + q.length + '</b>' +
+    q.filter(i => i.lastError).map(i => '<br><span class="late">ошибка: ' + esc(i.lastError) + '</span>').join('');
+}
+$('btnSaveUrl').addEventListener('click', ()=>{ setUrl($('urlInput').value.trim()); setKey($('keyInput').value.trim()); $('settingsMsg').className = 'msg'; $('settingsMsg').textContent = 'Сохранено на этом телефоне.'; updateSyncBar(); flushQueue().then(refreshAll); });
+$('btnPing').addEventListener('click', async ()=>{
+  const m = $('settingsMsg'); const url = getUrl(); if(!url){ m.className = 'msg err'; m.textContent = 'Сначала вставьте ссылку.'; return; }
+  m.className = 'msg'; m.textContent = 'Проверяю…';
+  try{ const r = await fetchT(url + '?action=ping&key=' + encodeURIComponent(getKey()), {}, 20000); const d = await r.json(); m.className = d.ok ? 'msg' : 'msg err'; m.textContent = d.ok ? '✓ Связь есть, хранилище отвечает.' : 'Ответ есть, но ошибка: ' + d.error; }
+  catch(e){ m.className = 'msg err'; m.textContent = 'Нет связи с хранилищем (интернет или неверная ссылка).'; }
+});
+$('btnBackup').addEventListener('click', async ()=>{
+  const dump = {savedAt:new Date().toISOString()};
+  for(const s of ['queue','leads','clients','bookings','measures']){
+    dump[s] = (await dbAll(s)).map(r => { const c = Object.assign({}, r); if(c.payload && c.payload.record && c.payload.record.photos) c.payload = Object.assign({}, c.payload, {record:Object.assign({}, c.payload.record, {photos:'[' + c.payload.record.photos.length + ' фото]'})}); return c; });
+  }
+  const blob = new Blob([JSON.stringify(dump, null, 1)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'princip_копия_' + todayStr() + '.json'; document.body.appendChild(a); a.click(); a.remove();
+});
+$('btnSyncNow').addEventListener('click', async ()=>{ $('syncText').textContent = 'Отправляю…'; await flushQueue(); await refreshAll(); updateSyncBar(); });
+
+/* ================= ЗАПУСК ================= */
+async function renderAll(){
+  await Promise.all([renderLeads(), renderClients(), renderDay(), renderMeasures(), fillClientSelect(), updateSyncBar()]);
+}
+document.addEventListener('focusout', ()=>{ setTimeout(()=>{ if(state.dirtyLeads && !isEditing($('tab-leads'))){ state.dirtyLeads = false; renderLeads(true); } if(state.dirtyClients && !isEditing($('tab-clients')) && !openDetails($('clientList'))){ state.dirtyClients = false; renderClients(true); } }, 300); });
+
+(async function init(){
+  fillSelect($('lSource'), SOURCES); fillSelect($('lRequest'), REQUESTS);
+  $('dateInput').value = todayStr(); $('mDate').value = todayStr();
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+  await openDb();
+  await renderAll();
+  await flushQueue(); await refreshAll();
+  setInterval(flushQueue, 15000);
+  setInterval(()=>{ if(!isEditing(document.body) && !openDetails(document.body)) refreshAll(); }, 120000);
+  window.addEventListener('online', ()=>{ flushQueue().then(refreshAll); updateSyncBar(); });
+  window.addEventListener('offline', updateSyncBar);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ flushQueue().then(refreshAll); } });
+  if('serviceWorker' in navigator && location.protocol !== 'file:'){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+})();
+</script>
+</body>
+</html>
